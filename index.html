@@ -1298,11 +1298,11 @@
           }
         }
 
-        if (isBetween(3, 8, 1, 5)) { // Wed 08:00 to Mon 05:00
+        if (isBetween(2, 6, 1, 5)) { // Tue 06:00 to Mon 05:00
           phase = 'normal';
-        } else if (isBetween(1, 5, 3, 4)) { // Mon 05:00 to Wed 04:00
+        } else if (isBetween(1, 5, 2, 3)) { // Mon 05:00 to Tue 03:00
           phase = 'warning';
-        } else if (isBetween(3, 4, 3, 8)) { // Wed 04:00 to Wed 08:00
+        } else if (isBetween(2, 3, 2, 4)) { // Tue 03:00 to Tue 04:00
           phase = 'active';
         }
       } else {
