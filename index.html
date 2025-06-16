@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dune Awakening Deep Desert Mapping Tool</title>
+  <link rel="icon" href="arrakis.png">
+  <style>
+    /* Reset and base styles */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: url('background.jpg') center/cover no-repeat fixed;
+      color: #f5e9c9;
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(30, 20, 10, 0.95);
+      padding: 0.5rem 2rem;
+      border-bottom: 2px solid #c2b280;
+    }
+    header img {
+      height: 48px;
+      margin-right: 1rem;
+    }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin: 0;
+      flex: 1;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      box-sizing: border-box;
+      background: rgba(20, 10, 5, 0.85);
+    }
+    /* Legend Panel */
+    #legend-panel {
+      width: 220px;
+      min-width: 180px;
+      background: rgba(40, 30, 15, 0.98);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 2px 8px #000a;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      height: fit-content;
+    }
+    .legend-category {
+      margin-bottom: 1rem;
+    }
+    .legend-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #ffe082;
+    }
+    .legend-icons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem 3rem; /* Increased gap for more space between icons */
+    }
+    .legend-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      background: #2d2211;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border 0.2s;
+      padding: 8px; /* Increased padding for more space around icons */
+    }
+    .legend-icon.selected, .legend-icon:focus {
+      border: 2px solid #ffe082;
+      outline: none;
+    }
+    /* Map Grid */
+    #map-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+    }
+    #map-grid {
+      display: grid;
+      grid-template-columns: repeat(9, 94px); /* 72px * 1.3 ≈ 94px */
+      grid-template-rows: repeat(9, 94px);
+      gap: 2px;
+      background: #c2b280;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px #000a;
+      margin-bottom: 1rem;
+      user-select: none;
+    }
+    .map-cell {
+      background: rgba(30, 20, 10, 0.95);
+      border-radius: 6px;
+      position: relative;
+      cursor: pointer;
+      outline: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: box-shadow 0.2s;
+    }
+    .map-cell.selected {
+      box-shadow: 0 0 0 3px #ffe082;
+      z-index: 2;
+    }
+    .map-cell.unexplored::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(60, 60, 60, 0.7);
+      border-radius: 6px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .cell-icons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      z-index: 2;
+      position: relative;
+      max-width: 100%;
+      max-height: 100%;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden; /* Prevent icons from overflowing the cell */
+    }
+    .cell-icons img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      display: block;
+    }
+    /* Controls */
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      justify-content: center;
+    }
+    #bottom-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 1.5rem;
+    }
+    .control-btn {
+      background: #ffe082;      /* Light yellow background */
+      color: #2d2211;           /* Very dark brown text */
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1.1rem;
+      font-size: 1.08rem;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 0.2s, color 0.2s;
+      box-shadow: 0 2px 6px #0002;
+    }
+    .control-btn:hover, .control-btn:focus {
+      background: #fff8e1;      /* Even lighter on hover/focus */
+      color: #1a1407;
+      outline: 2px solid #c2b280;
+    }
+    /* Storm Timer */
+    #storm-timer {
+      background: rgba(40, 30, 15, 0.98);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      box-shadow: 0 2px 8px #000a;
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+      min-width: 220px;
+    }
+    .timer-label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #ffe082;
+    }
+    .timer-countdown {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .timer-phase-active {
+      color: #ff5252;
+    }
+    .timer-phase-warning {
+      color: #ffd600;
+    }
+    .timer-phase-normal {
+      color: #80cbc4;
+    }
+    /* Icon Picker Modal */
+    #iconPickerModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    .icon-picker-content {
+      background: rgba(40, 40, 40, 0.95);
+      border: 2px solid #ffe066;
+      padding: 24px;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+    .icon-picker-btn {
+      background: linear-gradient(90deg, #ffe066 0%, #ffd700 100%);
+      color: #222;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 100px;
+      margin-right: 8px;
+    }
+    .icon-picker-btn.cancel {
+      background: linear-gradient(90deg, #666 0%, #888 100%);
+      color: #fff;
+    }
+    .icon-picker-btn:hover {
+      filter: brightness(1.1);
+    }
+    #iconPickerGrid img {
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      background: rgba(34, 34, 34, 0.8);
+      padding: 2px;
+      transition: all 0.2s;
+    }
+    #iconPickerGrid img.selected {
+      border-color: #ffe066;
+      background: rgba(255, 224, 102, 0.2);
+    }
+    /* Responsive */
+    @media (max-width: 900px) {
+      main {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 0.5rem;
+      }
+      #legend-panel {
+        flex-direction: row;
+        width: 100%;
+        min-width: 0;
+        padding: 0.5rem;
+        gap: 1rem;
+      }
+      #storm-timer {
+        margin-left: 0;
+        align-items: flex-start;
+        min-width: 0;
+      }
+      #map-grid {
+        grid-template-columns: repeat(9, 62px);
+        grid-template-rows: repeat(9, 62px);
+      }
+    }
+    @media (max-width: 600px) {
+      #map-grid {
+        grid-template-columns: repeat(9, 42px);
+        grid-template-rows: repeat(9, 42px);
+      }
+      .legend-icon {
+        width: 28px;
+        height: 28px;
+      }
+    }
+    #help-btn {
+      font-size: 1.5rem;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      padding: 0;
+      text-align: center;
+      line-height: 48px;
+      box-shadow: 0 2px 8px #0006;
+    }
+    .poi-table-header {
+      text-align: left;
+      color: #ffe082;
+      font-size: 1em;
+      padding-bottom: 4px;
+    }
+    .poi-table-header.number {
+      text-align: center;
+    }
+    .poi-table-cell-coord {
+      font-weight: bold;
+    }
+    .poi-table-cell-number {
+      text-align: center;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
+</head>
+<div id="iconPickerModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:2000;">
+  <div class="icon-picker-content" style="background:rgba(40,40,40,0.95);border:2px solid #ffe066;padding:24px;border-radius:12px;max-width:600px;width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.6);position:relative;">
+    <h3 style="margin-top:0;">Select an Icon</h3>
+    <div id="iconPickerGrid" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;"></div>
+    <div class="icon-picker-buttons" style="margin-top:10px;">
+      <button id="toggleExploredButton" class="icon-picker-btn" type="button">Toggle Explored</button>
+      <button class="icon-picker-btn cancel" type="button" id="closeIconPickerBtn">Escape</button>
+    </div>
+    <div id="iconPickerFeedback" style="display:none; position:absolute; top:10px; right:20px; background:#ffe066; color:#222; font-weight:bold; padding:6px 18px; border-radius:8px; box-shadow:0 2px 8px #2224; z-index:10;"></div>
+  </div>
+</div>
+<body>
+  <header>
+    <img src="arrakis.png" alt="Arrakis Logo" />
+    <h1>Dune Awakening Deep Desert Mapping Tool</h1>
+    <div id="storm-timer" aria-live="polite">
+      <div class="timer-label">Next Storm</div>
+      <div class="timer-countdown timer-phase-normal" id="storm-countdown">--:--:--</div>
+      <button class="control-btn" id="toggle-timezone" aria-label="Toggle UTC/Local Time">UTC</button>
+      <select id="server-select" style="font-size:0.9em; color:#2d2211; background:#ffe082; border-radius:6px; border:none; padding:2px 8px; margin-top:6px;">
+        <option value="europe">Europe</option>
+        <option value="na">North America</option>
+        <option value="sa">South America</option>
+        <option value="asia">Asia</option>
+        <option value="oceania">Oceania</option>
+      </select>
+    </div>
+  </header>
+  <main>
+    <aside id="legend-panel" aria-label="Legend Panel">
+      <div class="legend-category" id="legend-resources">
+        <div class="legend-title">Resources & POIs</div>
+        <div class="legend-icons" id="legend-resources-icons">
+          <!-- Resource/POI icons will be injected here -->
+        </div>
+      </div>
+      <div class="legend-category" id="legend-houses">
+        <div class="legend-title">Houses</div>
+        <div class="legend-icons" id="legend-houses-icons">
+          <!-- House icons will be injected here -->
+        </div>
+      </div>
+    </aside>
+    <section id="map-container">
+      <div id="controls" aria-label="Map Controls">
+        <button class="control-btn" id="explore-all" aria-label="Explore All">Explore All</button>
+        <button class="control-btn" id="undo" aria-label="Undo">Undo</button>
+        <button class="control-btn" id="redo" aria-label="Redo">Redo</button>
+        <button class="control-btn" id="clear-map" aria-label="Clear Map">Clear Map</button>
+        <button class="control-btn" id="open-poi-notes-btn" aria-label="POI Notes">POI Notes</button>
+      </div>
+      <div id="map-grid" tabindex="0" aria-label="Deep Desert Map Grid" role="grid">
+        <!-- 9x9 grid cells will be injected here -->
+      </div>
+      <div id="bottom-controls" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-top:1.5rem;">
+        <button class="control-btn" id="export-json" aria-label="Export as JSON">Export JSON</button>
+        <button class="control-btn" id="import-json" aria-label="Import from JSON">Import JSON</button>
+        <button class="control-btn" id="export-png" aria-label="Export as PNG">Export PNG</button>
+        <button class="control-btn" id="share-link" aria-label="Get Shareable Link">Share Link</button>
+      </div>
+      <input type="file" id="import-file" accept="application/json" style="display:none" />
+    </section>
+    <aside id="poi-notes-docket"
+      style="width:370px;min-width:220px;max-width:100vw;
+             background:rgba(40,30,15,0.98);border-radius:12px;
+             padding:1rem;box-shadow:0 2px 8px #000a;
+             display:none;flex-direction:column;gap:1.2rem;
+             height:fit-content;position:fixed;top:90px;right:40px;
+             z-index:3000;">
+      <div id="poi-notes-drag-handle"
+        style="cursor:move;height:28px;margin:-1rem -1rem 0 -1rem;background:rgba(60,50,30,0.18);border-top-left-radius:12px;border-top-right-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#ffe082;user-select:none;z-index:1;">
+        ⇕ Drag POI Tracker
+      </div>
+      <button id="close-poi-notes-btn" class="control-btn"
+        style="position:absolute;top:12px;right:12px;padding:2px 12px;font-size:1.2em;">✕</button>
+      <div style="font-size:1.2rem;font-weight:700;color:#ffe082;margin-bottom:0.5rem;">POI Schematic Tracker</div>
+      <div id="poi-notes-list" style="font-size:1em;max-height:540px;overflow-y:auto;"></div>
+    </aside>
+    <div id="poi-drops-summary" style="width:370px;min-width:220px;max-width:100vw;background:rgba(40,30,15,0.98);border-radius:12px;padding:1rem;box-shadow:0 2px 8px #000a;flex-direction:column;gap:1.2rem;height:fit-content;position:relative;margin-left:1.5rem;margin-bottom:1.5rem;">
+      <div style="font-size:1.1rem;font-weight:700;color:#ffe082;margin-bottom:0.5rem;">POI Drop Summary</div>
+      <button class="control-btn" id="export-poi-drops-csv" style="margin-bottom:0.7em;">Export Drop Summary (CSV)</button>
+      <div id="poi-drops-summary-list" style="font-size:1em;max-height:340px;overflow-y:auto;"></div>
+    </div>
+  <!-- Help Button -->
+  <button id="help-btn" class="control-btn" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:3000;" aria-label="Help">?</button>
+
+  <!-- Help Modal -->
+  <div id="help-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:4000;">
+    <div style="background:#2d2211;color:#ffe082;padding:2rem 2.5rem;border-radius:14px;max-width:480px;width:90vw;box-shadow:0 8px 32px #000a;position:relative;">
+      <h2 style="margin-top:0;">How to Use the Deep Desert Mapping Tool</h2>
+      <ul style="line-height:1.7;">
+        <li><b>Left-click</b> a grid cell to open the icon picker and add an icon.</li>
+        <li><b>Right-click</b> a grid cell to toggle explored/unexplored.</li>
+        <li><b>Drag</b> icons from the legend to the grid to place them.</li>
+        <li><b>Export</b> your map as PNG or JSON using the buttons below the grid.</li>
+        <li><b>Import</b> a saved map with the Import JSON button.</li>
+        <li><b>Undo/Redo</b> your last actions with the respective buttons.</li>
+        <li><b>Share Link</b> to copy a shareable map link.</li>
+        <li><b>POI Schematic Tracker</b> (POI Notes): Track and edit loot drops for Testing Stations and Shipwrecks. Open with the POI Notes button.</li>
+        <li><b>POI Drop Summary</b>: View and export all recorded drops as CSV.</li>
+        <li><b>Clear Map</b> resets the map and all POI/loot data.</li>
+        <li><b>Storm Timer</b> shows the next storm for your selected server and time zone.</li>
+        <li>Unexplored cells appear faded (50% opacity).</li>
+        <li>POI panel can be dragged and closed with <b>Esc</b> or the close button.</li>
+
+      </ul>
+      <button id="close-help-btn" class="control-btn" style="margin-top:1rem;">Close</button>
+    </div>
+  </div>
+  <script>
+    // --- Icon Definitions ---
+    const resourceIcons = [
+      { name: 'Spice', file: 'Spice.svg', label: 'Spice' },
+      { name: 'Titanium', file: 'Titanium.svg', label: 'Titanium' },
+      { name: 'Stravidium', file: 'Stravidium.svg', label: 'Stravidium' },
+      { name: 'Shipwreck', file: 'Shipwreck.svg', label: 'Shipwreck' },
+      { name: 'ShipwreckX2', file: 'ShipwreckX2.svg', label: 'Shipwreck (x2)' },
+      { name: 'Cave', file: 'Cave.svg', label: 'Cave' },
+      { name: 'TestingStation', file: 'TestingStation.svg', label: 'Testing Station' },
+      { name: 'Poi', file: 'Poi.svg', label: 'POI' },
+      { name: 'AuthorizedBase', file: 'AuthorizedBase.svg', label: 'Authorized' },
+      { name: 'HomeBase', file: 'HomeBase.svg', label: 'Home' }
+    ];
+    const houseIcons = [
+      'House_Alexin','House_Argpsaz','House_Dyvetz','House_Ecaz','House_Hagal','House_Hurata','House_Imota','House_Kenola','House_Lindaren','House_Maros','House_Mikarrol','House_Moritani','House_Mutelli','House_Novebruns','House_Richese','House_Sor','House_Spinnette','House_Taligari','House_Thorvald','House_Tseida','House_Varota','House_Vernius','House_Wallach','House_Wayku','House_Wydras'
+    ].map(house => ({ name: house, file: house + '.svg', label: house.replace('House_', '') }));
+
+    // --- State ---
+    const GRID_SIZE = 9;
+    let mapState = [];
+    let exploredState = [];
+    let selectedIcon = null;
+    let selectedCells = new Set();
+    let undoStack = [];
+    let redoStack = [];
+    let autosaveTimer = null;
+    let timezoneUTC = true;
+    let selectedServer = 'europe';
+
+    // Debounce timers
+    let stationDropsSaveTimer = null;
+    let shipwreckDropsSaveTimer = null;
+
+    function saveUserStationDropsDebounced() {
+      clearTimeout(stationDropsSaveTimer);
+      stationDropsSaveTimer = setTimeout(() => {
+        localStorage.setItem('userStationDrops', JSON.stringify(userStationDrops));
+      }, 400); // adjust delay as needed
+    }
+
+    function saveUserShipwreckDropsDebounced() {
+      clearTimeout(shipwreckDropsSaveTimer);
+      shipwreckDropsSaveTimer = setTimeout(() => {
+        localStorage.setItem('userShipwreckDrops', JSON.stringify(userShipwreckDrops));
+      }, 400);
+    }
+
+    // --- Utility Functions ---
+    function showNotification(msg, timeout=2500) {
+      const notif = document.getElementById('notification');
+      notif.textContent = msg;
+      notif.style.display = 'block';
+      setTimeout(() => notif.style.display = 'none', timeout);
+    }
+    function saveToLocalStorage() {
+      localStorage.setItem('dune_map_state', JSON.stringify({ mapState, exploredState }));
+    }
+    function loadFromLocalStorage() {
+      const data = localStorage.getItem('dune_map_state');
+      if (data) {
+        try {
+          const { mapState: ms, exploredState: es } = JSON.parse(data);
+          if (Array.isArray(ms) && Array.isArray(es)) {
+            mapState = ms;
+            exploredState = es;
+            renderGrid();
+            showNotification('Map loaded from autosave.');
+          }
+        } catch {}
+      }
+    }
+    function pushUndo() {
+      undoStack.push({ map: JSON.stringify(mapState), explored: JSON.stringify(exploredState) });
+      if (undoStack.length > 100) undoStack.shift();
+      redoStack = [];
+    }
+    function popUndo() {
+      if (undoStack.length === 0) return;
+      redoStack.push({ map: JSON.stringify(mapState), explored: JSON.stringify(exploredState) });
+      const prev = undoStack.pop();
+      mapState = JSON.parse(prev.map);
+      exploredState = JSON.parse(prev.explored);
+      renderGrid();
+    }
+    function popRedo() {
+      if (redoStack.length === 0) return;
+      undoStack.push({ map: JSON.stringify(mapState), explored: JSON.stringify(exploredState) });
+      const next = redoStack.pop();
+      mapState = JSON.parse(next.map);
+      exploredState = JSON.parse(next.explored);
+      renderGrid();
+    }
+    // --- Grid Rendering ---
+    function renderGrid() {
+      const grid = document.getElementById('map-grid');
+      grid.innerHTML = '';
+      // Render cells from bottom (A) to top (I), left 1 to right 9
+      for (let y = GRID_SIZE - 1; y >= 0; y--) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const idx = y * GRID_SIZE + x;
+          const cell = document.createElement('div');
+          cell.className = 'map-cell';
+          cell.setAttribute('role', 'gridcell');
+          cell.setAttribute('tabindex', '0');
+          // Coordinates: bottom A (y=0) to top I (y=8), left 1 (x=0) to right 9 (x=8)
+          const rowLabel = String.fromCharCode(65 + y); // A-I
+          const colLabel = (x + 1).toString();
+          cell.setAttribute('aria-label', `Cell ${rowLabel}${colLabel}`);
+          if (!exploredState[idx]) cell.classList.add('unexplored');
+          if (selectedCells.has(idx)) cell.classList.add('selected');
+          cell.dataset.idx = idx;
+          // Icons
+          const iconDiv = document.createElement('div');
+          iconDiv.className = 'cell-icons';
+          const icons = mapState[idx] || [];
+          const isUnexplored = !exploredState[idx];
+          const hasIcons = icons.length > 0;
+
+          // Set cell opacity if unexplored and has icons
+          if (isUnexplored && hasIcons) {
+            cell.style.opacity = '0.5';
+          } else {
+            cell.style.opacity = '1';
+          }
+
+          for (const icon of icons) {
+            const img = document.createElement('img');
+            img.src = icon.file.startsWith('..') ? icon.file : `Icons/${icon.file}`;
+            img.alt = icon.label;
+            img.title = icon.label;
+            img.width = 36;
+            img.height = 36;
+            img.style.margin = '2px';
+            // Set icon opacity to 0 if unexplored and has icons
+            img.style.opacity = '1';
+            iconDiv.appendChild(img);
+          }
+
+          // --- AUTO-EXPLORE: If a cell has icons, set it as explored ---
+          if (icons.length > 0 && !exploredState[idx]) {
+            exploredState[idx] = true;
+          }
+
+          cell.appendChild(iconDiv);
+          // Add coordinate label in corner
+          const coordLabel = document.createElement('div');
+          coordLabel.textContent = `${rowLabel}${colLabel}`;
+          coordLabel.style.position = 'absolute';
+          coordLabel.style.bottom = '4px';
+          coordLabel.style.right = '6px';
+          coordLabel.style.fontSize = '0.95em';
+          coordLabel.style.color = '#ffe082cc';
+          coordLabel.style.pointerEvents = 'none';
+          coordLabel.style.fontWeight = 'bold';
+          cell.appendChild(coordLabel);
+          // Cell events
+          cell.addEventListener('click', e => {
+            if (e.shiftKey) {
+              if (selectedCells.has(idx)) selectedCells.delete(idx);
+              else selectedCells.add(idx);
+              renderGrid();
+              return;
+            }
+            selectedCells.clear();
+            selectedCells.add(idx);
+            renderGrid();
+          });
+          cell.addEventListener('dblclick', () => {
+            // Toggle explored
+            pushUndo();
+            exploredState[idx] = !exploredState[idx];
+            renderGrid();
+            saveToLocalStorage();
+          });
+          cell.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && selectedIcon) {
+              handleIconPlacement(idx);
+            } else if (e.key === 'Delete') {
+              handleIconRemoval(idx);
+            } else if (e.key === ' ') {
+              // Toggle explored
+              pushUndo();
+              exploredState[idx] = !exploredState[idx];
+              renderGrid();
+              saveToLocalStorage();
+            }
+          });
+          cell.addEventListener('dragover', e => {
+            e.preventDefault();
+            cell.style.boxShadow = '0 0 0 3px #ffe082';
+          });
+          cell.addEventListener('dragleave', e => {
+            cell.style.boxShadow = '';
+          });
+          cell.addEventListener('drop', e => {
+            e.preventDefault();
+            cell.style.boxShadow = '';
+            let icon;
+            try {
+              icon = JSON.parse(e.dataTransfer.getData('application/json'));
+            } catch { return; }
+            if (!icon) return;
+            pushUndo();
+            mapState[idx] = mapState[idx] || [];
+            if (!mapState[idx].some(ic => ic.name === icon.name)) {
+              mapState[idx].push(icon);
+              // --- Set cell as explored when icon is dropped ---
+              exploredState[idx] = true;
+              renderGrid();
+              saveToLocalStorage();
+            }
+          });
+          cell.addEventListener('contextmenu', e => {
+            e.preventDefault(); // Prevent the browser context menu
+            pushUndo();
+            exploredState[idx] = !exploredState[idx];
+            renderGrid();
+            saveToLocalStorage();
+          });
+          grid.appendChild(cell);
+        }
+      }
+    }
+    // --- Legend Rendering ---
+    function renderLegend() {
+      const resDiv = document.getElementById('legend-resources-icons');
+      const houseDiv = document.getElementById('legend-houses-icons');
+      resDiv.innerHTML = '';
+      houseDiv.innerHTML = '';
+      for (const icon of resourceIcons) {
+        const btn = document.createElement('button');
+        btn.className = 'legend-icon';
+        btn.setAttribute('aria-label', icon.label);
+        btn.tabIndex = 0;
+        btn.draggable = true;
+        btn.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;">
+            <img src="${icon.file.startsWith('..') ? icon.file : 'Icons/' + icon.file}" alt="${icon.label}" width="28" height="28">
+            <span style="font-size:0.85em;color:#ffe082;margin-top:2px;white-space:nowrap;">${icon.label}</span>
+          </div>
+        `;
+        btn.addEventListener('click', () => {
+          selectedIcon = icon;
+          document.querySelectorAll('.legend-icon').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+        btn.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            btn.click();
+          }
+        });
+        btn.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('application/json', JSON.stringify(icon));
+          e.dataTransfer.effectAllowed = 'copy';
+        });
+        resDiv.appendChild(btn);
+      }
+      for (const icon of houseIcons) {
+        const btn = document.createElement('button');
+        btn.className = 'legend-icon';
+        btn.setAttribute('aria-label', icon.label);
+        btn.tabIndex = 0;
+        btn.draggable = true;
+        btn.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;">
+            <img src="Icons/${icon.file}" alt="${icon.label}" width="28" height="28">
+            <span style="font-size:0.85em;color:#ffe082;margin-top:2px;white-space:nowrap;">${icon.label}</span>
+          </div>
+        `;
+        btn.addEventListener('click', () => {
+          selectedIcon = icon;
+          document.querySelectorAll('.legend-icon').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+        btn.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            btn.click();
+          }
+        });
+        btn.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('application/json', JSON.stringify(icon));
+          e.dataTransfer.effectAllowed = 'copy';
+        });
+        houseDiv.appendChild(btn);
+      }
+    }
+    // --- Icon Placement/Removal ---
+    function handleIconPlacement(idx) {
+      if (!selectedIcon) return;
+      pushUndo();
+      for (const i of selectedCells.size ? selectedCells : [idx]) {
+        mapState[i] = mapState[i] || [];
+        if (!mapState[i].some(ic => ic.name === selectedIcon.name)) {
+          mapState[i].push(selectedIcon);
+        }
+      }
+      renderGrid();
+      saveToLocalStorage();
+    }
+    function handleIconRemoval(idx) {
+      pushUndo();
+      for (const i of selectedCells.size ? selectedCells : [idx]) {
+        if (mapState[i]) mapState[i] = [];
+      }
+      renderGrid();
+      saveToLocalStorage();
+    }
+    // --- Controls ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // Init state
+      mapState = Array(GRID_SIZE * GRID_SIZE).fill().map(() => []);
+      exploredState = Array(GRID_SIZE * GRID_SIZE).fill(false);
+      renderLegend();
+      renderGrid();
+      loadFromLocalStorage();
+      // Controls
+      document.getElementById('explore-all').onclick = () => {
+        pushUndo();
+        exploredState = Array(GRID_SIZE * GRID_SIZE).fill(true);
+        renderGrid();
+        saveToLocalStorage();
+      };
+      document.getElementById('undo').onclick = () => popUndo();
+      document.getElementById('redo').onclick = () => popRedo();
+      document.getElementById('clear-map').onclick = () => {
+        if (confirm('Are you sure you want to clear the entire map? This cannot be undone.')) {
+          pushUndo();
+          mapState = Array(GRID_SIZE * GRID_SIZE).fill().map(() => []);
+          exploredState = Array(GRID_SIZE * GRID_SIZE).fill(false);
+          // Clear POI tracker numbers
+          userStationDrops = {};
+          userShipwreckDrops = {};
+          localStorage.setItem('userStationDrops', '{}');
+          localStorage.setItem('userShipwreckDrops', '{}');
+          renderGrid();
+          saveToLocalStorage();
+          showNotification('Map cleared!');
+          // Open POI Tracker panel to ensure DOM is available for cleaning
+          document.getElementById('poi-notes-docket').style.display = 'flex';
+          // Clear POI Tracker list and summary DOM
+          document.getElementById('poi-notes-list').innerHTML = '';
+          document.getElementById('poi-drops-summary-list').innerHTML = '';
+          // Re-render panels with cleared data
+          renderPoiNotesPanel();
+          renderPoiDropsSummary();
+        }
+      };
+      document.getElementById('export-json').onclick = () => {
+        // Build export data with coordinate labels
+        const exportMap = mapState.map((icons, idx) => ({
+          coord: getCellLabel(idx),
+          icons
+        }));
+        const exportExplored = exploredState.map((val, idx) => ({
+          coord: getCellLabel(idx),
+          explored: val
+        }));
+
+        const data = JSON.stringify(
+          {
+            map: exportMap,
+            explored: exportExplored,
+            date: new Date().toISOString()
+          },
+          null,
+          2
+        );
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dune_map_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      document.getElementById('import-json').onclick = () => {
+        document.getElementById('import-file').click();
+      };
+      document.getElementById('import-file').onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = evt => {
+          try {
+            const data = JSON.parse(evt.target.result);
+
+            // Support both old and new formats
+            let ms, es;
+            if (Array.isArray(data.map) && Array.isArray(data.explored)) {
+              // New format with coord labels
+              ms = Array(GRID_SIZE * GRID_SIZE);
+              es = Array(GRID_SIZE * GRID_SIZE);
+              data.map.forEach((cell, idx) => {
+                ms[idx] = cell.icons || [];
+              });
+              data.explored.forEach((cell, idx) => {
+                es[idx] = !!cell.explored;
+              });
+            } else if (Array.isArray(data.mapState) && Array.isArray(data.exploredState)) {
+              // Old format
+              ms = data.mapState;
+              es = data.exploredState;
+            }
+
+            if (
+              Array.isArray(ms) && Array.isArray(es) &&
+              ms.length === GRID_SIZE * GRID_SIZE &&
+              es.length === GRID_SIZE * GRID_SIZE
+            ) {
+              pushUndo();
+              mapState = ms;
+              exploredState = es;
+              renderGrid();
+              showNotification('Map imported!');
+              saveToLocalStorage();
+            } else {
+              showNotification('Invalid map data.', 3000);
+            }
+          } catch {
+            showNotification('Failed to import JSON.', 3000);
+          }
+        };
+        reader.readAsText(file);
+      };
+      document.getElementById('export-png').onclick = () => exportPNG();
+      document.getElementById('share-link').onclick = () => {
+        // Build export data with coordinate labels (same as JSON export)
+        const exportMap = mapState.map((icons, idx) => ({
+          coord: getCellLabel(idx),
+          icons
+        }));
+        const exportExplored = exploredState.map((val, idx) => ({
+          coord: getCellLabel(idx),
+          explored: val
+        }));
+
+        const data = {
+          map: exportMap,
+          explored: exportExplored,
+          date: new Date().toISOString()
+        };
+
+        const json = JSON.stringify(data);
+        const compressed = LZString.compressToEncodedURIComponent(json);
+        const url = `${location.origin}${location.pathname}?map=${compressed}`;
+        const longUrl = url;
+
+        fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`)
+          .then(res => res.text())
+          .then(shortUrl => {
+            // Only copy the TinyURL link to clipboard
+            if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(shortUrl)
+                .then(() => showNotification('Short shareable link copied to clipboard!'))
+                .catch(() => {
+                  window.prompt('Copy this link:', shortUrl);
+                  showNotification('Copy this link manually.');
+                });
+            } else {
+              window.prompt('Copy this link:', shortUrl);
+              showNotification('Copy this link manually.');
+            }
+          })
+          .catch(() => {
+            window.prompt('Copy this link:', longUrl);
+            showNotification('Could not shorten link, copied full link instead.');
+          });
+      };
+      // Keyboard navigation
+      document.getElementById('map-grid').addEventListener('keydown', e => {
+        const idx = selectedCells.size ? [...selectedCells][0] : 0;
+        let x = idx % GRID_SIZE, y = Math.floor(idx / GRID_SIZE);
+        if (e.key === 'ArrowRight' && x < GRID_SIZE-1) x++;
+        else if (e.key === 'ArrowLeft' && x > 0) x--;
+        else if (e.key === 'ArrowDown' && y < GRID_SIZE-1) y++;
+        else if (e.key === 'ArrowUp' && y > 0) y--;
+        else return;
+        selectedCells.clear();
+        selectedCells.add(y * GRID_SIZE + x);
+        renderGrid();
+        e.preventDefault();
+      });
+      // On load, check for map in URL
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('map')) {
+        try {
+          const json = LZString.decompressFromEncodedURIComponent(params.get('map'));
+          const data = JSON.parse(json);
+
+          let ms, es;
+          if (Array.isArray(data.map) && Array.isArray(data.explored)) {
+            // New format with coord labels
+            ms = Array(GRID_SIZE * GRID_SIZE);
+            es = Array(GRID_SIZE * GRID_SIZE);
+            data.map.forEach((cell, idx) => {
+              ms[idx] = cell.icons || [];
+            });
+            data.explored.forEach((cell, idx) => {
+              es[idx] = !!cell.explored;
+            });
+          } else if (Array.isArray(data.mapState) && Array.isArray(data.exploredState)) {
+            // Old format
+            ms = data.mapState;
+            es = data.exploredState;
+          }
+
+          if (
+            Array.isArray(ms) && Array.isArray(es) &&
+            ms.length === GRID_SIZE * GRID_SIZE &&
+            es.length === GRID_SIZE * GRID_SIZE
+          ) {
+            mapState = ms;
+            exploredState = es;
+            renderGrid();
+            showNotification('Loaded map from link!');
+          }
+        } catch {
+          showNotification('Failed to load map from link.', 3000);
+        }
+      }
+      // Help Modal Logic
+      const helpBtn = document.getElementById('help-btn');
+      const helpModal = document.getElementById('help-modal');
+      const closeHelpBtn = document.getElementById('close-help-btn');
+      helpBtn.onclick = () => helpModal.style.display = 'flex';
+      closeHelpBtn.onclick = () => helpModal.style.display = 'none';
+      window.onclick = (e) => {
+        if (e.target === helpModal) helpModal.style.display = 'none';
+      };
+
+      const serverSelect = document.getElementById('server-select');
+      serverSelect.value = selectedServer;
+      serverSelect.onchange = function() {
+        selectedServer = serverSelect.value;
+        updateStormTimer();
+      };
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('open-poi-notes-btn').onclick = function() {
+        document.getElementById('poi-notes-docket').style.display = 'flex';
+        renderPoiNotesPanel();
+      };
+      document.getElementById('close-poi-notes-btn').onclick = function() {
+        document.getElementById('poi-notes-docket').style.display = 'none';
+        const notesDiv = document.getElementById('poi-notes-list');
+        notesDiv.innerHTML = '';
+        // ...rest of your close logic...
+      };
+    });
+
+    // Allow closing POI Schematic Tracker with Escape key
+    document.addEventListener('keydown', function(e) {
+      const poiPanel = document.getElementById('poi-notes-docket');
+      if (poiPanel && poiPanel.style.display !== 'none' && e.key === 'Escape') {
+        poiPanel.style.display = 'none';
+        document.getElementById('poi-notes-list').innerHTML = '';
+        // Optionally update summary if needed
+        renderPoiDropsSummary();
+      }
+    });
+
+    // --- PNG Export ---
+    function exportPNG() {
+      const cellSize = 150;
+      const gap = 2;
+      const gridSize = 9;
+      const backgroundSrc = 'background.jpg';
+      const legendPadding = 30;
+      const legendIconSize = 40;
+      const legendTextSize = 22;
+      const legendSpacing = 28;
+      const legendTitleSize = 26;
+      const legendTitle = "Legend";
+
+      // Use your icon arrays and labels
+      const leftLegendItems = resourceIcons.map(icon => ({ icon, name: icon.label }));
+      const rightLegendItems = houseIcons.map(icon => ({ icon, name: icon.label }));
+
+      const legendRows = Math.max(leftLegendItems.length, rightLegendItems.length);
+      const legendHeight = legendPadding * 2 + legendTitleSize + legendSpacing + legendRows * (legendIconSize + legendSpacing);
+      const dateHeight = 60;
+      const gridWidth = gridSize * (cellSize + gap);
+      const gridHeight = gridSize * (cellSize + gap);
+      const legendWidth = legendPadding * 2 + legendIconSize + 10 + 140;
+
+      // Align legends vertically with the map grid
+      // Calculate vertical offset so legends are centered with the grid
+      const totalHeight = Math.max(gridHeight + dateHeight, legendHeight + dateHeight);
+      const legendTop = dateHeight + ((gridHeight - legendHeight) / 2 > 0 ? (gridHeight - legendHeight) / 2 : 0);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = legendWidth * 2 + gridWidth;
+      canvas.height = totalHeight;
+
+      function loadImage(src) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = src;
+        });
+      }
+
+      // Load all icons
+      const iconPromises = {};
+      [...resourceIcons, ...houseIcons].forEach(icon => {
+        iconPromises[icon.name] = loadImage(icon.file.startsWith('..') ? icon.file : 'Icons/' + icon.file);
+      });
+
+      Promise.all([
+        loadImage(backgroundSrc),
+        ...Object.values(iconPromises)
+      ]).then(([backgroundImage, ...iconImages]) => {
+        const iconMap = {};
+        let i = 0;
+        for (const icon of [...resourceIcons, ...houseIcons]) {
+          iconMap[icon.name] = iconImages[i++];
+        }
+
+        // Date/time bar
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, dateHeight);
+        const now = new Date();
+        const dateStr = timezoneUTC ? now.toUTCString() : now.toLocaleString();
+        ctx.font = "bold 32px Arial";
+        ctx.fillStyle = "#fff";
+        ctx.textBaseline = "middle";
+        ctx.fillText(dateStr, legendWidth + 20, dateHeight / 2);
+
+        // Background
+        ctx.globalAlpha = 0.4;
+        ctx.drawImage(backgroundImage, legendWidth, dateHeight, gridWidth, gridHeight);
+        ctx.globalAlpha = 1.0;
+
+        // Left legend (resources/POIs) - vertically centered with grid
+        ctx.fillStyle = "rgba(30,30,30,0.85)";
+        ctx.fillRect(0, legendTop, legendWidth, legendHeight);
+        ctx.font = `bold ${legendTitleSize}px Arial`;
+        ctx.fillStyle = "#fff";
+        ctx.textBaseline = "top";
+        ctx.fillText(legendTitle, legendPadding, legendTop + legendPadding);
+        let legendY = legendTop + legendPadding + legendTitleSize + legendSpacing;
+        ctx.font = `${legendTextSize}px Arial`;
+        leftLegendItems.forEach(item => {
+          if (iconMap[item.icon.name]) {
+            ctx.drawImage(iconMap[item.icon.name], legendPadding, legendY, legendIconSize, legendIconSize);
+          }
+          ctx.fillStyle = "#fff";
+          ctx.fillText(item.name, legendPadding + legendIconSize + 10, legendY + (legendIconSize - legendTextSize) / 2);
+          legendY += legendIconSize + legendSpacing;
+        });
+
+        // Right legend (houses) - vertically centered with grid
+        ctx.fillStyle = "rgba(30,30,30,0.85)";
+        ctx.fillRect(canvas.width - legendWidth, legendTop, legendWidth, legendHeight);
+        ctx.font = `bold ${legendTitleSize}px Arial`;
+        ctx.fillStyle = "#fff";
+        ctx.textBaseline = "top";
+        ctx.fillText(legendTitle, canvas.width - legendWidth + legendPadding, legendTop + legendPadding);
+        legendY = legendTop + legendPadding + legendTitleSize + legendSpacing;
+        ctx.font = `${legendTextSize}px Arial`;
+        rightLegendItems.forEach(item => {
+          if (iconMap[item.icon.name]) {
+            ctx.drawImage(iconMap[item.icon.name], canvas.width - legendWidth + legendPadding, legendY, legendIconSize, legendIconSize);
+          }
+          ctx.fillStyle = "#fff";
+          ctx.fillText(item.name, canvas.width - legendWidth + legendPadding + legendIconSize + 10, legendY + (legendIconSize - legendTextSize) / 2);
+          legendY += legendIconSize + legendSpacing;
+        });
+
+        // Draw grid
+        for (let row = 8; row >= 0; row--) {
+          for (let col = 0; col < gridSize; col++) {
+            const canvasRow = 8 - row;
+            const x = legendWidth + col * (cellSize + gap);
+            const y = dateHeight + canvasRow * (cellSize + gap);
+            const idx = row * gridSize + col;
+            const icons = mapState[idx] || [];
+            const n = icons.length;
+
+            // --- ENSURE: If a cell has icons, treat as explored for export ---
+            const isUnexplored = !exploredState[idx] && (!mapState[idx] || mapState[idx].length === 0);
+
+            // Draw icons only if not unexplored
+            let iconSize, positions;
+            if (n === 1) {
+              iconSize = 90;
+              positions = [[cellSize / 2, cellSize / 2 + 10]];
+            } else if (n === 2) {
+              iconSize = 70;
+              positions = [
+                [cellSize / 2 - 35, cellSize / 2 + 10],
+                [cellSize / 2 + 35, cellSize / 2 + 10]
+              ];
+            } else if (n === 3) {
+              iconSize = 60;
+              positions = [
+                [cellSize / 2, cellSize / 2 - 30],
+                [cellSize / 2 - 38, cellSize / 2 + 32],
+                [cellSize / 2 + 38, cellSize / 2 + 32]
+              ];
+            } else if (n === 4) {
+              iconSize = 54;
+              positions = [
+                [cellSize / 2 - 32, cellSize / 2 - 24],
+                [cellSize / 2 + 32, cellSize / 2 - 24],
+                [cellSize / 2 - 32, cellSize / 2 + 32],
+                [cellSize / 2 + 32, cellSize / 2 + 32]
+              ];
+            } else {
+              iconSize = 40;
+              positions = [];
+              const grid = 3;
+              const offset = (cellSize - grid * iconSize) / 2;
+              for (let i = 0; i < Math.min(n, 9); i++) {
+                const gx = i % 3;
+                const gy = Math.floor(i / 3);
+                positions.push([
+                  offset + gx * iconSize + iconSize / 2,
+                  30 + offset + gy * iconSize + iconSize / 2
+                ]);
+              }
+            }
+            for (let i = 0; i < Math.min(n, 9); i++) {
+              const icon = icons[i];
+              if (icon && iconMap[icon.name]) {
+                ctx.globalAlpha = 1.0; // Always full opacity for icons
+                ctx.drawImage(
+                  iconMap[icon.name],
+                  x + positions[i][0] - iconSize / 2,
+                  y + positions[i][1] - iconSize / 2,
+                  iconSize,
+                  iconSize
+                );
+              }
+            }
+
+            // Cell overlay for explored/unexplored
+            if (isUnexplored) {
+              ctx.fillStyle = "rgba(30,30,30,0.55)";
+              ctx.fillRect(x, y, cellSize, cellSize);
+            } else {
+              ctx.fillStyle = "rgba(255,255,255,0.13)";
+              ctx.fillRect(x, y, cellSize, cellSize);
+            }
+
+            // --- Draw coordinates in the bottom right of each cell ---
+            ctx.save();
+            ctx.font = "bold 28px Arial";
+            ctx.fillStyle = "#ffe082";
+            ctx.textAlign = "right";
+            ctx.textBaseline = "bottom";
+            const coordLabel = String.fromCharCode(65 + row) + (col + 1);
+            ctx.shadowColor = "#222";
+            ctx.shadowBlur = 4;
+            ctx.fillText(coordLabel, x + cellSize - 10, y + cellSize - 10);
+            ctx.restore();
+          }
+        }
+
+        // Signature at top right, same line as date
+        loadImage('fwb.png').then(fwbImg => {
+          const sigHeight = 44;
+          const sigMargin = 18;
+          const sigY = (dateHeight - sigHeight) / 2;
+          const sigText = "Provided by Fremen with Benefits";
+          ctx.font = "bold 24px Arial";
+          const textWidth = ctx.measureText(sigText).width;
+          const sigX = canvas.width - sigMargin - sigHeight - 12 - textWidth;
+          ctx.save();
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = "#222";
+          ctx.fillRect(sigX - 16, sigY - 8, textWidth + sigHeight + 44, sigHeight + 16);
+          ctx.globalAlpha = 1.0;
+          ctx.drawImage(fwbImg, sigX, sigY, sigHeight, sigHeight);
+          ctx.font = "bold 24px Arial";
+          ctx.fillStyle = "#ffe066";
+          ctx.textBaseline = "middle";
+          ctx.fillText(sigText, sigX + sigHeight + 12, sigY + sigHeight / 2);
+          ctx.restore();
+          const link = document.createElement('a');
+          link.download = 'grid.png';
+          link.href = canvas.toDataURL();
+          link.click();
+        });
+      });
+    }
+
+    // --- Storm Timer ---
+    function getNextStorm(now, server = selectedServer) {
+      // Europe: Monday 05:00 UTC, Wednesday 04:00 UTC
+      // North America: Monday 05:00 UTC, Thursday 04:00 UTC
+      // South America: Monday 07:00 UTC, Thursday 06:00 UTC
+      // Asia: Monday 00:00 UTC, Thursday 00:00 UTC
+      // Oceania: Monday 00:00 UTC, Thursday 00:00 UTC
+      const configs = {
+        europe:   { days: [1, 3], hours: [5, 4] },
+        na:       { days: [1, 4], hours: [5, 4] },
+        sa:       { days: [1, 4], hours: [7, 6] },
+        asia:     { days: [1, 4], hours: [0, 0] },
+        oceania:  { days: [1, 4], hours: [0, 0] }
+      };
+      const cfg = configs[server] || configs.europe;
+      let next = null;
+      for (let i = 0; i < 2; i++) {
+        const d = new Date(now);
+        d.setUTCHours(cfg.hours[i], 0, 0, 0);
+        d.setUTCDate(d.getUTCDate() + ((cfg.days[i] - d.getUTCDay() + 7) % 7));
+        if (d > now && (!next || d < next)) next = d;
+      }
+      if (!next) {
+        const d = new Date(now);
+        d.setUTCHours(cfg.hours[0], 0, 0, 0);
+        d.setUTCDate(d.getUTCDate() + ((cfg.days[0] - d.getUTCDay() + 7) % 7) + 7);
+        next = d;
+      }
+      return next;
+    }
+    function updateStormTimer() {
+      const now = new Date();
+      const nextStorm = getNextStorm(now);
+      let diff = (nextStorm - now) / 1000;
+
+      // --- Custom phase logic for Europe server ---
+      // Between Wednesday 08:00 UTC to Monday 05:00 UTC: timer-phase-normal
+      // From Monday 05:00 UTC to Wednesday 04:00 UTC:   timer-phase-warning
+      // From Wednesday 04:00 UTC to Wednesday 08:00 UTC: timer-phase-active
+
+      let phase = 'normal';
+
+      // Only apply this logic for Europe server
+      if (selectedServer === 'europe') {
+        // Get current UTC day and hour
+        const utcDay = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 3=Wed, ...
+        const utcHour = now.getUTCHours();
+
+        // Helper to check if now is between two UTC times (day/hour)
+        function isBetween(startDay, startHour, endDay, endHour) {
+          const nowMinutes = utcDay * 24 * 60 + utcHour * 60 + now.getUTCMinutes();
+          const startMinutes = startDay * 24 * 60 + startHour * 60;
+          const endMinutes = endDay * 24 * 60 + endHour * 60;
+          if (startMinutes <= endMinutes) {
+            return nowMinutes >= startMinutes && nowMinutes < endMinutes;
+          } else {
+            // Wraps around week
+            return nowMinutes >= startMinutes || nowMinutes < endMinutes;
+          }
+        }
+
+        if (isBetween(3, 8, 1, 5)) { // Wed 08:00 to Mon 05:00
+          phase = 'normal';
+        } else if (isBetween(1, 5, 3, 4)) { // Mon 05:00 to Wed 04:00
+          phase = 'warning';
+        } else if (isBetween(3, 4, 3, 8)) { // Wed 04:00 to Wed 08:00
+          phase = 'active';
+        }
+      } else {
+        // Fallback: original logic for other servers
+        if (diff < 3600 * 1) phase = 'active';
+        else if (diff < 3600 * 3) phase = 'warning';
+        else phase = 'normal';
+      }
+
+      const days = Math.floor(diff / 86400);
+      const hours = Math.floor((diff % 86400) / 3600);
+      const mins = Math.floor((diff % 3600) / 60);
+      const secs = Math.floor(diff % 60);
+      const el = document.getElementById('storm-countdown');
+      el.textContent = `${days}:${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+      el.className = 'timer-countdown timer-phase-' + phase;
+
+      // Change the label to reflect the storm state
+      const label = document.querySelector('.timer-label');
+      if (phase === 'active') {
+        label.textContent = 'Storm Active';
+      } else if (phase === 'warning') {
+        label.textContent = 'Storm Brewing';
+      } else {
+        label.textContent = 'Next Storm';
+      }
+
+      // Timezone toggle
+      document.getElementById('toggle-timezone').textContent = timezoneUTC ? 'UTC' : 'Local';
+      document.getElementById('toggle-timezone').onclick = () => {
+        timezoneUTC = !timezoneUTC;
+        updateStormTimer();
+      };
+    }
+    setInterval(updateStormTimer, 1000);
+    updateStormTimer();
+
+    // --- Icon Picker Modal Logic ---
+    let iconPickerCellIdx = null;
+    let iconPickerSelectedIcon = null;
+
+    // Open modal on left click
+    document.getElementById('map-grid').addEventListener('click', function(e) {
+      const cell = e.target.closest('.map-cell');
+      if (!cell) return;
+      iconPickerCellIdx = parseInt(cell.dataset.idx, 10);
+      openIconPicker();
+    });
+
+    function openIconPicker() {
+      iconPickerSelectedIcon = null;
+      const modal = document.getElementById('iconPickerModal');
+      const grid = document.getElementById('iconPickerGrid');
+      grid.innerHTML = '';
+      
+      // Show all icons
+      [...resourceIcons, ...houseIcons].forEach(icon => {
+        const img = document.createElement('img');
+        img.src = icon.file.startsWith('..') ? icon.file : `Icons/${icon.file}`;
+        img.alt = icon.label;
+        img.title = icon.label;
+        img.tabIndex = 0;
+
+        // Highlight if already in cell
+        if (
+          iconPickerCellIdx != null &&
+          mapState[iconPickerCellIdx] &&
+          mapState[iconPickerCellIdx].some(ic => ic.name === icon.name)
+        ) {
+          img.classList.add('selected');
+        }
+
+        img.onclick = () => {
+          if (iconPickerCellIdx != null) {
+            const cellIcons = mapState[iconPickerCellIdx] || [];
+            const iconIdx = cellIcons.findIndex(ic => ic.name === icon.name);
+            if (iconIdx !== -1) {
+              // Icon is already in cell: remove it
+              pushUndo();
+              cellIcons.splice(iconIdx, 1);
+              mapState[iconPickerCellIdx] = cellIcons;
+              renderGrid();
+              saveToLocalStorage();
+              showIconPickerFeedback('Icon removed!');
+              img.classList.remove('selected');
+            } else {
+              // Icon not in cell: add it
+              pushUndo();
+              mapState[iconPickerCellIdx] = mapState[iconPickerCellIdx] || [];
+              mapState[iconPickerCellIdx].push(icon);
+              exploredState[iconPickerCellIdx] = true;
+              renderGrid();
+              saveToLocalStorage();
+              showIconPickerFeedback('Icon placed!');
+              // Highlight the newly placed icon
+              grid.querySelectorAll('img').forEach(i => i.classList.remove('selected'));
+              img.classList.add('selected');
+            }
+          }
+        };
+        grid.appendChild(img);
+      });
+      modal.style.display = 'flex';
+    }
+
+    function showIconPickerFeedback(msg) {
+      const feedback = document.getElementById('iconPickerFeedback');
+      feedback.textContent = msg;
+      feedback.style.display = 'block';
+      setTimeout(() => {
+        feedback.style.display = 'none';
+      }, 1200);
+    }
+
+    // Toggle explored/unexplored
+    document.getElementById('toggleExploredButton').onclick = function() {
+      if (iconPickerCellIdx == null) return;
+      pushUndo();
+      exploredState[iconPickerCellIdx] = !exploredState[iconPickerCellIdx];
+      renderGrid();
+      saveToLocalStorage();
+      showIconPickerFeedback(
+        exploredState[iconPickerCellIdx] ? 'Cell set as explored!' : 'Cell set as unexplored!'
+      );
+    };
+
+    // Escape button
+    document.getElementById('closeIconPickerBtn').onclick = closeIconPicker;
+
+    function closeIconPicker() {
+      document.getElementById('iconPickerModal').style.display = 'none';
+    }
+
+    // Allow closing icon picker with Escape key
+    document.addEventListener('keydown', function(e) {
+      const modal = document.getElementById('iconPickerModal');
+      if (modal.style.display === 'flex' && e.key === 'Escape') {
+        closeIconPicker();
+      }
+    });
+
+    // --- Help Modal Logic ---
+    document.getElementById('help-btn').onclick = function() {
+      document.getElementById('help-modal').style.display = 'flex';
+    };
+    document.getElementById('close-help-btn').onclick = function() {
+      document.getElementById('help-modal').style.display = 'none';
+    };
+    // Optional: Close help modal with Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') document.getElementById('help-modal').style.display = 'none';
+    });
+
+    // --- POI Notes Data ---
+    const testingStationNotes = {
+      "A2": [
+        "Arhun K-28 Lasgun",
+        "Compact Compactor Mk5",
+        "Collapsible Dew Reaper Mk5",
+        "Mendek's Rattle (Rifle)",
+        "Night Rider Sandbike Boost Mk5",
+        "Station Gauntlets",
+        "Steady Assault Boost Module Mk5",
+        "Double-Sealed Stilltent"
+      ],
+      "A3": [
+        "Arhun K-28 Lasgun",
+        "Compact Compactor Mk5",
+        "Collapsible Dew Reaper Mk5",
+        "Mendek's Rattle (Rifle)",
+        "Night Rider Sandbike Boost Mk5",
+        "Station Gauntlets",
+        "Steady Assault Boost Module Mk5",
+        "Double-Sealed Stilltent"
+      ],
+      "A4": [
+        "Maas Kharet Bloodbag",
+        "Cope (Heavy Pistol)",
+        "Extravagant Message (Vulcan)",
+        "Filter Extractor Mk5",
+        "Hummingbird Wing Module Mk5 (Assault)",
+        "Saturnine Stillsuit Boots",
+        "Saturnine Stillsuit Garment",
+        "Saturnine Stillsuit Gloves",
+        "Saturnine Stillsuit Mask",
+        "Wayfinder Helm"
+      ],
+      "A5": [
+        "Maas Kharet Bloodbag",
+        "Cope (Heavy Pistol)",
+        "Extravagant Message (Vulcan)",
+        "Filter Extractor Mk5",
+        "Saturnine Stillsuit Boots",
+        "Saturnine Stillsuit Garment",
+        "Saturnine Stillsuit Gloves",
+        "Saturnine Stillsuit Mask",
+        "Hummingbird Wing Module Mk5 (Assault)",
+        "Wayfinder Helm"
+      ],
+      "A8": [
+        "Albatross Wing Module Mk5 (Scout)",
+        "The Emperor's Wings Mk5",
+        "Jolt-Sword",
+        "Long Range Scanner",
+        "Scrubber (Explosive Rifle)",
+        "Focused Reaper Mk5 (Scythe)",
+        "Station Garb (Chest)",
+        "Taqwa's Double (Maula Pistol)"
+      ],
+      "A9": [
+        "Albatross Wing Module Mk5 (Scout)",
+        "The Emperor's Wings Mk5",
+        "Jolt-Sword",
+        "Long Range Scanner",
+        "Scrubber (Explosive Rifle)",
+        "Focused Reaper Mk5 (Scythe)",
+        "Station Garb (Chest)",
+        "Taqwa's Double (Maula Pistol)"
+      ]
+    };
+
+    const shipwreckNotes = {
+      "A1 - Hicetas": [
+        "Batigh Stillsuit Chest",
+        "Batigh Stillsuit Mask",
+        "Batigh Stillsuit Gloves",
+        "Batigh Stillsuit Boots",
+        "Syndicate Impaler (Scattergun)",
+        "Stormrider Boost Module Mk5"
+      ],
+      "A1 - Eumenes": [
+        "Mendek's Boots",
+        "Mendek's Chestplate",
+        "Mendek's Gauntlets",
+        "Mendek's Helmet",
+        "Mendek's Pants",
+        "Tarl Softstep Boots"
+      ],
+      "A2 - Hyperbatas": [
+        "Tarl Softstep Boots",
+        "Mendek's Gauntlets",
+        "Mendek's Pants",
+        "Mendek's Boots",
+        "Advanced Suspensor Jacket"
+      ],
+      "A3 - Archidamas III": [
+        "Adept Disruptor Pistol",
+        "Advanced Reaper Gloves",
+        "Focused Buggy Cutteray Mk5",
+        "Shaded Hood",
+        "Impure Extractor Mk5",
+        "Piter's Disruptor",
+        "Shaitan's Tongue (Flamethrower)"
+      ],
+      "A3 - Cycliadas": [
+        "Advanced Suspensor Jacket",
+        "Mendek's Helmet",
+        "Mendek's Gauntlets",
+        "Mendek's Pants",
+        "Mendek's Boots"
+      ],
+      "A4 - Dioedas": [
+        "Advanced Suspensor Jacket",
+        "Mendek's Gauntlets",
+        "Mendek's Helmet",
+        "Mendek's Chestplate",
+        "Mendek's Boots",
+        "Mendek's Pants",
+        "Tarl Softstep Boots"
+      ],
+      "A5 - Xenophon": [
+        "Batigh Stillsuit Boots",
+        "Batigh Stillsuit Gloves",
+        "Batigh Stillsuit Mask",
+        "Kharet Viper (Rapier)",
+        "Syndicate Impaler (Scattergun)"
+      ],
+      "A7 - Proxenus": [
+        "Advanced Reaper Gloves",
+        "Piter's Disruptor",
+        "Focused Buggy Cutteray Mk5",
+        "Shaitan's Tongue (Flamethrower)"
+      ],
+      "A9 - Orsippus": [
+        "Advanced Suspensor Jacket",
+        "Mendek's Chestplate",
+        "Mendek's Gauntlets",
+        "Mendek's Boots",
+        "Mendek's Helmet"
+      ],
+      "A9 - Stasanor": [
+        "Focused Buggy Cutteray Mk5",
+        "Piter's Disruptor",
+        "Adept Disruptor Pistol",
+        "Shaitan's Tongue (Flamethrower)"
+      ]
+    };
+
+    // User selections (persisted)
+    let userStationDrops = JSON.parse(localStorage.getItem('userStationDrops') || '{}');
+    let userShipwreckDrops = JSON.parse(localStorage.getItem('userShipwreckDrops') || '{}');
+
+    // Helper: get cell label from idx
+    function getCellLabel(idx) {
+      const y = Math.floor(idx / GRID_SIZE);
+      const x = idx % GRID_SIZE;
+      return String.fromCharCode(65 + y) + (x + 1);
+    }
+    // Helper: get idx from cell label
+    function getIdxFromLabel(label) {
+      const y = label.charCodeAt(0) - 65;
+      const x = parseInt(label.slice(1), 10) - 1;
+      return y * GRID_SIZE + x;
+    }
+
+    // --- Render POI Notes Panel ---
+    function renderPoiNotesPanel() {
+      const notesDiv = document.getElementById('poi-notes-list');
+      notesDiv.innerHTML = '';
+
+      // Collect all POIs present on the map
+      const poiEntries = [];
+
+      // Testing Stations
+      for (const coord in testingStationNotes) {
+        const idx = getIdxFromLabel(coord);
+        const icons = mapState[idx] || [];
+        const hasTestingStation = icons.some(ic => ic.name === 'TestingStation');
+        if (!hasTestingStation) continue;
+        for (const item of testingStationNotes[coord]) {
+          // Use a number instead of boolean for count
+          let count = 0;
+          if (userStationDrops[coord] && typeof userStationDrops[coord][item] === 'number') {
+            count = userStationDrops[coord][item];
+          }
+          poiEntries.push({
+            coord,
+            poi: 'Testing Station',
+            item,
+            count,
+            key: `station|${coord}|${item}`
+          });
+        }
+      }
+      // Shipwrecks
+      for (const label in shipwreckNotes) {
+        const [coord, wreckName] = label.split(' - ');
+        const idx = getIdxFromLabel(coord);
+        const icons = mapState[idx] || [];
+        const hasShipwreck = icons.some(ic => ic.name === 'Shipwreck' || ic.name === 'ShipwreckX2');
+        if (!hasShipwreck) continue;
+        for (const item of shipwreckNotes[label]) {
+          let count = 0;
+          if (userShipwreckDrops[label] && typeof userShipwreckDrops[label][item] === 'number') {
+            count = userShipwreckDrops[label][item];
+          }
+          poiEntries.push({
+            coord,
+            poi: `Shipwreck (${wreckName})`,
+            item,
+            count,
+            key: `shipwreck|${label}|${item}`
+          });
+        }
+      }
+
+      // Sort: by coord, then POI, then item
+      poiEntries.sort((a, b) => {
+        if (a.coord !== b.coord) return a.coord.localeCompare(b.coord);
+        if (a.poi !== b.poi) return a.poi.localeCompare(b.poi);
+        return a.item.localeCompare(b.item);
+      });
+
+      // Render as table
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th class="poi-table-header">Coordinates</th>
+            <th class="poi-table-header">POI</th>
+            <th class="poi-table-header">Item</th>
+            <th class="poi-table-header number">Number</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      `;
+      const tbody = table.querySelector('tbody');
+
+      for (const entry of poiEntries) {
+        const tr = document.createElement('tr');
+        tr.style.background = selectedCells.has(getIdxFromLabel(entry.coord)) ? 'rgba(255,224,130,0.13)' : '';
+        // Coordinates
+        const tdCoord = document.createElement('td');
+        tdCoord.textContent = entry.coord;
+        tdCoord.className = 'poi-table-cell-coord';
+        tdCoord.style.cursor = 'pointer';
+        tdCoord.onclick = () => {
+          selectedCells.clear();
+          selectedCells.add(getIdxFromLabel(entry.coord));
+          renderGrid();
+          tr.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        };
+        // POI
+        const tdPoi = document.createElement('td');
+        tdPoi.textContent = entry.poi;
+        // Item
+        const tdItem = document.createElement('td');
+        tdItem.textContent = entry.item;
+        // Number input
+        const tdNumber = document.createElement('td');
+        tdNumber.className = 'poi-table-cell-number';
+        tdNumber.style.textAlign = 'center';
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '0';
+        input.value = entry.count || '';
+        input.style.width = '60px';
+        input.onchange = (e) => {
+          let val = parseInt(input.value, 10);
+          if (isNaN(val) || val < 0) val = 0;
+          input.value = val;
+          if (entry.key.startsWith('station|')) {
+            const coord = entry.coord;
+            userStationDrops[coord] = userStationDrops[coord] || {};
+            userStationDrops[coord][entry.item] = val;
+            saveUserStationDropsDebounced();
+          } else if (entry.key.startsWith('shipwreck|')) {
+            const label = entry.key.split('|')[1];
+            userShipwreckDrops[label] = userShipwreckDrops[label] || {};
+            userShipwreckDrops[label][entry.item] = val;
+            saveUserShipwreckDropsDebounced();
+          }
+          updatePoiDropsSummaryAndPanel();
+        };
+        tdNumber.appendChild(input);
+
+        tr.appendChild(tdCoord);
+        tr.appendChild(tdPoi);
+        tr.appendChild(tdItem);
+        tr.appendChild(tdNumber);
+        tbody.appendChild(tr);
+      }
+
+      notesDiv.appendChild(table);
+    }
+
+    let lastPoiDropsSummaryHTML = '';
+
+    function renderPoiDropsSummary() {
+      const summaryDiv = document.getElementById('poi-drops-summary-list');
+      if (!summaryDiv) return;
+
+      const droppedEntries = collectDroppedEntries();
+
+      let html = '';
+      if (droppedEntries.length === 0) {
+        html = `<div style="color:#ffe082;text-align:center;padding:1em 0;">No drops recorded yet.</div>`;
+      } else {
+        html = `
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th class="poi-table-header">Coordinates</th>
+                <th class="poi-table-header">POI</th>
+                <th class="poi-table-header">Item</th>
+                <th class="poi-table-header number">Number</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${droppedEntries.map(entry => `
+                <tr>
+                  <td class="poi-table-cell-coord">${entry.coord}</td>
+                  <td>${entry.poi}</td>
+                  <td>${entry.item}</td>
+                  <td class="poi-table-cell-number">${entry.count}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+
+      // Only update DOM if HTML changed
+      if (summaryDiv.innerHTML !== html) {
+        summaryDiv.innerHTML = html;
+        lastPoiDropsSummaryHTML = html;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', renderPoiDropsSummary);
+
+    function updatePoiDropsSummaryAndPanel() {
+      renderPoiNotesPanel();
+      renderPoiDropsSummary();
+    }
+
+    // Update close handler for POI Notes
+    document.getElementById('close-poi-notes-btn').onclick = function() {
+      document.getElementById('poi-notes-docket').style.display = 'none';
+      const notesDiv = document.getElementById('poi-notes-list');
+      notesDiv.innerHTML = '';
+
+      const droppedEntries = collectDroppedEntries();
+
+      if (droppedEntries.length === 0) {
+        notesDiv.innerHTML = `<div style="color:#ffe082;text-align:center;padding:1em 0;">No drops recorded yet.</div>`;
+        return;
+      }
+
+      // Render as table
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th style="text-align:left;color:#ffe082;font-size:1em;padding-bottom:4px;">Coordinates</th>
+            <th style="text-align:left;color:#ffe082;font-size:1em;padding-bottom:4px;">POI</th>
+            <th style="text-align:left;color:#ffe082;font-size:1em;padding-bottom:4px;">Item</th>
+            <th style="text-align:center;color:#ffe082;font-size:1em;padding-bottom:4px;">Number</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      `;
+      const tbody = table.querySelector('tbody');
+
+      for (const entry of droppedEntries) {
+        const tr = document.createElement('tr');
+        // Coordinates
+        const tdCoord = document.createElement('td');
+        tdCoord.textContent = entry.coord;
+        tdCoord.style.fontWeight = 'bold';
+        // POI
+        const tdPoi = document.createElement('td');
+        tdPoi.textContent = entry.poi;
+        // Item
+        const tdItem = document.createElement('td');
+        tdItem.textContent = entry.item;
+        // Number
+        const tdNumber = document.createElement('td');
+        tdNumber.textContent = entry.count;
+        tdNumber.style.textAlign = 'center';
+
+        tr.appendChild(tdCoord);
+        tr.appendChild(tdPoi);
+        tr.appendChild(tdItem);
+        tr.appendChild(tdNumber);
+        tbody.appendChild(tr);
+      }
+
+      notesDiv.appendChild(table);
+      renderPoiDropsSummary();
+    };
+
+    // --- Show/hide POI Notes Panel ---
+    document.getElementById('open-poi-notes-btn').onclick = function() {
+      document.getElementById('poi-notes-docket').style.display = 'flex';
+      renderPoiNotesPanel();
+    };
+
+    // --- Keep panel in sync with map ---
+    const origRenderGridPoi = renderGrid;
+    renderGrid = function() {
+      origRenderGridPoi.apply(this, arguments);
+      if (document.getElementById('poi-notes-docket').style.display !== 'none') {
+        renderPoiNotesPanel();
+      }
+    };
+
+    // --- Optional: open panel if cell selected from elsewhere ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // Remove old dockets if present
+      const old1 = document.getElementById('station-notes-docket');
+      const old2 = document.getElementById('shipwreck-notes-docket');
+      if (old1) old1.remove();
+      if (old2) old2.remove();
+    });
+
+    // Update the draggable logic to use the new drag handle and fixed positioning on the right
+
+    (function makePoiNotesDraggable() {
+      const panel = document.getElementById('poi-notes-docket');
+      const dragHandle = document.getElementById('poi-notes-drag-handle');
+      let isDragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
+
+      // Use fixed positioning for right side
+      panel.style.position = 'fixed';
+      panel.style.right = '40px';
+      panel.style.top = '90px';
+      panel.style.left = '';
+      panel.style.transform = '';
+      panel.style.zIndex = 3000;
+
+      dragHandle.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        // Get current position
+        const rect = panel.getBoundingClientRect();
+        origX = rect.right;
+        origY = rect.top;
+        document.body.style.userSelect = 'none';
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        let dx = e.clientX - startX;
+        let dy = e.clientY - startY;
+        // Move relative to right/top
+        panel.style.right = (window.innerWidth - origX - dx) + 'px';
+        panel.style.top = (origY + dy) + 'px';
+        panel.style.left = '';
+        panel.style.transform = '';
+      });
+
+      document.addEventListener('mouseup', function() {
+        if (isDragging) {
+          isDragging = false;
+          document.body.style.userSelect = '';
+        }
+      });
+
+      // Optional: Reset position when opening
+      document.getElementById('open-poi-notes-btn').addEventListener('click', function() {
+        panel.style.right = '40px';
+        panel.style.top = '90px';
+        panel.style.left = '';
+        panel.style.transform = '';
+      });
+    })();
+
+    document.getElementById('export-poi-drops-csv').onclick = function() {
+      const droppedEntries = collectDroppedEntries();
+
+      // CSV header
+      let csv = 'Coordinates,POI,Item,Number\n';
+      for (const entry of droppedEntries) {
+        // Escape commas and quotes
+        const row = [
+          entry.coord,
+          entry.poi.replace(/"/g, '""'),
+          entry.item.replace(/"/g, '""'),
+          entry.count
+        ].map(val => `"${val}"`).join(',');
+        csv += row + '\n';
+      }
+
+      // Download as CSV
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `poi_drop_summary_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    function collectDroppedEntries() {
+      const droppedEntries = [];
+      // Testing Stations
+      for (const coord in testingStationNotes) {
+        const idx = getIdxFromLabel(coord);
+        const icons = mapState[idx] || [];
+        const hasTestingStation = icons.some(ic => ic.name === 'TestingStation');
+        if (!hasTestingStation) continue;
+        for (const item of testingStationNotes[coord]) {
+          if (userStationDrops[coord] && userStationDrops[coord][item] > 0) {
+            droppedEntries.push({
+              coord,
+              poi: 'Testing Station',
+              item,
+              count: userStationDrops[coord][item]
+            });
+          }
+        }
+      }
+      // Shipwrecks
+      for (const label in shipwreckNotes) {
+        const [coord, wreckName] = label.split(' - ');
+        const idx = getIdxFromLabel(coord);
+        const icons = mapState[idx] || [];
+        const hasShipwreck = icons.some(ic => ic.name === 'Shipwreck' || ic.name === 'ShipwreckX2');
+        if (!hasShipwreck) continue;
+        for (const item of shipwreckNotes[label]) {
+          if (userShipwreckDrops[label] && userShipwreckDrops[label][item] > 0) {
+            droppedEntries.push({
+              coord,
+              poi: `Shipwreck (${wreckName})`,
+              item,
+              count: userShipwreckDrops[label][item]
+            });
+          }
+        }
+      }
+      // Sort
+      droppedEntries.sort((a, b) => {
+        if (a.coord !== b.coord) return a.coord.localeCompare(b.coord);
+        if (a.poi !== b.poi) return a.poi.localeCompare(b.poi);
+        return a.item.localeCompare(b.item);
+      });
+      return droppedEntries;
+    }
+
+    function copyToClipboardOrPrompt(link) {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(link)
+          .then(() => {
+            showNotification('Link copied to clipboard!');
+          })
+          .catch(() => {
+            window.prompt('Copy this link:', link);
+            showNotification('Copy this link manually.');
+          });
+      } else {
+        window.prompt('Copy this link:', link);
+        showNotification('Copy this link manually.');
+      }
+    }
+  </script>
+</body>
+</html>
