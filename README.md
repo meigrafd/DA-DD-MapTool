@@ -1,5 +1,7 @@
 # Dune Awakening Deep Desert Mapping Tool
 
+all Credits goes to [DD-Mapping-Tool](<https://github.com/Dfintz/DD-Mapping-Tool>)
+
 ## Project Description
 
 This project is a web-based interactive mapping tool designed for the game **Dune: Awakening**. It allows players to collaboratively map, annotate, and share information about the Deep Desert region, including resources, points of interest (POIs), and house locations. The tool is optimized for usability, accessibility, and performance, making it suitable for both individual and group use.
